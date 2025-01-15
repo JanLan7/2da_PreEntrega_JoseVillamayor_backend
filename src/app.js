@@ -6,68 +6,61 @@
 
 //Levantamos un servidor simple
 
-import express from "express";
-import {engine} from "express-handlebars"
-import viewsRouter from "./routes/views.router.js"
+import express from 'express';
+import handlebars from 'express-handlebars';
+import { Server } from 'socket.io';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import viewsRouter from './routes/views.router.js';
+import productManager from './managers/ProductManager.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const app = express();
-const PUERTO = 8080;
+const httpServer = app.listen(8080, () => console.log('Server running on port 8080'));
+const socketServer = new Server(httpServer);
 
-//middleware
+// Configuración de Handlebars
+app.engine('handlebars', handlebars.engine());
+app.set('views', __dirname + '/views');
+app.set('view engine', 'handlebars');
 
-app.use(express.json())
-app.use(express.urlencoded({extended:true}))
-app.use(express.static("./src/public"));
+app.use(express.static(__dirname + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-//configuramos express handlebars
-app.engine("handlebars", engine());
-app.set("view engine", "handlebars")
-app.set("views", "./src/views")
+// Rutas
+app.use('/', viewsRouter);
 
-//rutas
-app.use("/", viewsRouter)
-
-//importaciones socket.io
-
-
-import  { Server } from "socket.io";
-
-
-
-//listen
-const httpServer = app.listen(PUERTO, ()=>{
-    console.log(`Escuchando en el puerto: ${PUERTO}`);
+// WebSocket
+socketServer.on('connection', socket => {
+    console.log('Cliente conectado');
     
+    // Enviar productos actuales al cliente que se conecta
+    socket.emit('updateProducts', productManager.getProducts());
 
-})
+    socket.on('addProduct', data => {
+        try {
+            const newProduct = productManager.addProduct(data);
+            socketServer.emit('updateProducts', productManager.getProducts());
+        } catch (error) {
+            console.error('Error al agregar producto:', error);
+        }
+    });
 
-// generamos una instancia de socket.io desde el lado del backend
-const io = new Server(httpServer);
+    socket.on('deleteProduct', id => {
+        try {
+            const deleted = productManager.deleteProduct(Number(id));
+            if (deleted) {
+                socketServer.emit('updateProducts', productManager.getProducts());
+            }
+        } catch (error) {
+            console.error('Error al eliminar producto:', error);
+        }
+    });
+});
 
-//creamos un array de usuarios
-
-const usuarios = [
-    {id:1, nombre: "tinki winki", apellido: "Teletubbies"},
-    {id:2, nombre: "dipsi", apellido: "Teletubbies"},
-    {id:3, nombre: "lala", apellido: "Teletubbies"},
-    {id:4, nombre: "Po", apellido: "Teletubbies"},
-    {id:5, nombre: "Bebe Sol", apellido: "Teletubbies"}
-]
-
-
-io.on("connection", (socket)=>{
-    console.log("un cliente se conecto conmigo");
-
-    socket.on("mensaje", (data)=>{
-        console.log(data);
-        
-    })
-
-    //ahora el servidor va a enviar un mensaje al cliente
-
-    socket.emit("saludito", "Hola front,como estas? ");
-
-    // enviamos un array de usuarios al front
-    socket.emit("usuarios",usuarios);
-})
+export { socketServer };
 
 

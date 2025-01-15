@@ -1,7 +1,61 @@
-{{!-- el backend les envia el listado de productos --}}
+<h1>Productos en Tiempo Real</h1>
 
-{{!-- actualizar en tiempo real --}}
+<form id="productForm">
+    <input type="text" id="name" placeholder="Nombre del producto" required>
+    <input type="text" id="description" placeholder="Descripción" required>
+    <input type="number" id="price" placeholder="Precio" required>
+    <button type="submit">Agregar Producto</button>
+</form>
 
-{{!-- pueden colocar un forulario para nuevo productio --}}
-{{!-- pueden colocar un boton para eliminar producto en cada card --}}
+<div id="productList" class="product-list">
+    {{#each products}}
+    <div class="product-card">
+        <h2>{{this.name}}</h2>
+        <p>{{this.description}}</p>
+        <p>Precio: ${{this.price}}</p>
+        <button onclick="deleteProduct({{this.id}})">Eliminar</button>
+    </div>
+    {{/each}}
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    
+    socket.on('connect', () => {
+        console.log('Conectado al servidor');
+    });
+
+    document.getElementById('productForm').onsubmit = (e) => {
+        e.preventDefault();
+        const product = {
+            name: document.getElementById('name').value,
+            description: document.getElementById('description').value,
+            price: Number(document.getElementById('price').value)
+        };
+        socket.emit('addProduct', product);
+        e.target.reset();
+    };
+
+    function deleteProduct(id) {
+        socket.emit('deleteProduct', id);
+    }
+
+    socket.on('updateProducts', (products) => {
+        const productList = document.getElementById('productList');
+        if (products.length === 0) {
+            productList.innerHTML = '<p>No hay productos disponibles</p>';
+            return;
+        }
+        
+        productList.innerHTML = products.map(product => `
+            <div class="product-card">
+                <h2>${product.name}</h2>
+                <p>${product.description}</p>
+                <p>Precio: $${product.price}</p>
+                <button onclick="deleteProduct(${product.id})">Eliminar</button>
+            </div>
+        `).join('');
+    });
+</script>
 

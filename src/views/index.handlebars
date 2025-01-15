@@ -1,4 +1,17 @@
-<h1>Hola mundo , estoy en el motor de plantilla</h1>
+<h1>Lista de Productos</h1>
+<div class="product-list">
+    {{#if products.length}}
+        {{#each products}}
+        <div class="product-card">
+            <h2>{{this.name}}</h2>
+            <p>{{this.description}}</p>
+            <p>Precio: ${{this.price}}</p>
+        </div>
+        {{/each}}
+    {{else}}
+        <p>No hay productos disponibles</p>
+    {{/if}}
+</div>
 
 {{!-- Aca debemos inportar socket.io --}}
 
